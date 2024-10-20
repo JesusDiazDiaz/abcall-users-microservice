@@ -35,7 +35,7 @@ def index(client_id):
     return query_result.result
 
 
-@app.route('/user/{user_sub}', methods=['GET'], authorizer=authorizer, api_key_required=True)
+@app.route('/user/{user_sub}', methods=['GET'])
 def user_get(user_sub):
     try:
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
