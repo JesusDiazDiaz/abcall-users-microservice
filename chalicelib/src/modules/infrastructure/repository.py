@@ -6,7 +6,6 @@ from chalicelib.src.modules.infrastructure.dto import User, DocumentType, UserRo
 from chalicelib.src.config.db import db_session, init_db
 from chalicelib.src.seedwork.infrastructure.utils import handle_db_session
 
-
 LOGGER = logging.getLogger('abcall-pqrs-microservice')
 
 
@@ -25,7 +24,8 @@ class UserRepositoryPostgres(UserRepository):
             id_number=user.id_number,
             name=user.name,
             last_name=user.last_name,
-            communication_type=CommunicationType(user.communication_type)
+            communication_type=CommunicationType(user.communication_type),
+            cellphone=user.cellphone
         )
         self.db_session.add(new_user)
         self.db_session.commit()
@@ -45,7 +45,7 @@ class UserRepositoryPostgres(UserRepository):
         self.db_session.commit()
         LOGGER.info(f"User {user_sub} removed successfully")
 
-    def get_all(self, query:dict[str, str]):
+    def get_all(self, query: dict[str, str]):
         user_schema = UserSchema(many=True)
         if not query:
             return self.db_session.query(User).all()
@@ -62,10 +62,9 @@ class UserRepositoryPostgres(UserRepository):
         if 'id_number' in query:
             filters.append(User.id_number == query['id_number'])
 
-        result = self.db_session.query(User).filter(and_(*filters)).all() if len(filters) > 1\
+        result = self.db_session.query(User).filter(and_(*filters)).all() if len(filters) > 1 \
             else self.db_session.query(User).filter(filters[0]).all()
         return user_schema.dump(result)
-
 
     def update(self, user_sub, data) -> None:
         LOGGER.info(f"Repository update user sub: {user_sub} with data: {data}")

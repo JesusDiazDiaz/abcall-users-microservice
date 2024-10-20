@@ -1,14 +1,16 @@
-import boto3, logging, re
-from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, NotFoundError
+import boto3
+import logging
+import re
+from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, NotFoundError, ChaliceViewError
+
+from chalicelib.src.config.db import init_db
 from chalicelib.src.modules.application.commands.create_user import CreateUserCommand
-from chalicelib.src.modules.application.commands.update_user import UpdateUserCommand
 from chalicelib.src.modules.application.commands.delete_user import DeleteUserCommand
-from chalicelib.src.modules.infrastructure.dto import Base
-from chalicelib.src.seedwork.application.commands import execute_command
-from chalicelib.src.config.db import init_db, engine
-from chalicelib.src.seedwork.application.queries import execute_query
-from chalicelib.src.modules.application.queries.get_users import GetUsersQuery
+from chalicelib.src.modules.application.commands.update_user import UpdateUserCommand
 from chalicelib.src.modules.application.queries.get_user import GetUserQuery
+from chalicelib.src.modules.application.queries.get_users import GetUsersQuery
+from chalicelib.src.seedwork.application.commands import execute_command
+from chalicelib.src.seedwork.application.queries import execute_query
 
 app = Chalice(app_name='abcall-users-microservice')
 app.debug = True
@@ -154,7 +156,9 @@ def user_post():
         name=user_as_json["name"],
         last_name=user_as_json["last_name"],
         communication_type=user_as_json["communication_type"],
-        user_role=user_as_json["user_role"]
+        user_role=user_as_json["user_role"],
+        cellphone=user_as_json["cellphone"] if "cellphone" in user_as_json else None
+
     )
 
     execute_command(command)
@@ -174,13 +178,15 @@ def get_current_user():
         cognito_data = {
             'username': user_info['email'],
             'email': user_info['email'],
-            'user_rol': user_info['custom:custom:userRole'],
+            'user_role': user_info['custom:custom:userRole'],
         }
 
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
 
         if not query_result.result:
             raise NotFoundError('User not found')
+
+        query_result.pop('user_role', None)
 
         user_data = {
             **cognito_data,
