@@ -40,6 +40,7 @@ class User(Base):
     name = Column(String, nullable=False)
     last_name = Column(String, nullable=False)
     communication_type = Column(Enum(CommunicationType), nullable=False)
+    cellphone = Column(String, nullable=True)
 
 
 class UserSchema(SQLAlchemyAutoSchema):
