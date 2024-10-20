@@ -1,5 +1,5 @@
 import boto3, logging, re
-from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer
+from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, NotFoundError
 from chalicelib.src.modules.application.commands.create_user import CreateUserCommand
 from chalicelib.src.modules.application.commands.update_user import UpdateUserCommand
 from chalicelib.src.modules.application.commands.delete_user import DeleteUserCommand
@@ -167,7 +167,9 @@ def get_current_user():
     LOGGER.info("Find Me User")
     user_info = app.current_request.context['authorizer']['claims']
     user_sub = user_info['sub']
+
     LOGGER.info(f"User Info: {user_info}")
+
     try:
         cognito_data = {
             'username': user_info['email'],
@@ -178,14 +180,14 @@ def get_current_user():
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
 
         if not query_result.result:
-            return {'status': 'fail', 'message': 'User not found in database'}, 404
+            raise NotFoundError('User not found')
 
         user_data = {
             **cognito_data,
             **query_result.result
         }
 
-        return {'status': 'success', 'data': user_data}, 200
+        return user_data
 
     except cognito_client.exceptions.NotAuthorizedException:
         return {'status': 'fail', 'message': 'Invalid token or not authorized'}, 401
