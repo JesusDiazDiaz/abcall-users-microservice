@@ -1,7 +1,6 @@
 artifacts:
   files:
   - transformed.yaml
-  type: zip
 phases:
   build:
     commands:

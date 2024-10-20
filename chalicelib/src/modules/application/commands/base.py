@@ -1,3 +1,4 @@
+from chalicelib.src.modules.infrastructure.factory import UserFactory
 from chalicelib.src.seedwork.application.commands import CommandHandler
 
 
