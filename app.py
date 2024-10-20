@@ -35,14 +35,14 @@ def index(client_id):
     return query_result.result
 
 
-@app.route('/user/{user_sub}', methods=['GET'], authorizer=authorizer)
+@app.route('/user/{user_sub}', methods=['GET'], authorizer=authorizer, api_key_required=True)
 def user_get(user_sub):
     try:
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
         if not query_result.result:
             return {'status': 'fail', 'message': 'User not found'}
 
-        return {'status': 'success', 'data': query_result.result}, 200
+        return query_result.result
 
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
