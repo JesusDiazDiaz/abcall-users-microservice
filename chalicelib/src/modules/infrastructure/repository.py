@@ -19,13 +19,13 @@ class UserRepositoryPostgres(UserRepository):
         user_schema = UserSchema()
         new_user = User(
             cognito_user_sub=user.cognito_user_sub,
-            document_type=DocumentType[user.document_type],
-            user_rol=UserRol[user.user_role],
+            document_type=DocumentType(user.document_type),
+            user_role=UserRole(user.user_role),
             client_id=user.client_id,
             id_number=user.id_number,
             name=user.name,
             last_name=user.last_name,
-            communication_type=CommunicationType[user.communication_type]
+            communication_type=CommunicationType(user.communication_type)
         )
         self.db_session.add(new_user)
         self.db_session.commit()
@@ -33,7 +33,7 @@ class UserRepositoryPostgres(UserRepository):
 
     def get(self, user_sub):
         user_schema = UserSchema()
-        user = self.db_session.query(User).filter_by(user_sub=user_sub).first()
+        user = self.db_session.query(User).filter_by(cognito_user_sub=user_sub).first()
         if not user:
             raise ValueError("user not found")
         return user_schema.dump(user)
@@ -62,7 +62,8 @@ class UserRepositoryPostgres(UserRepository):
         if 'id_number' in query:
             filters.append(User.id_number == query['id_number'])
 
-        result = self.db_session.query(User).filter(and_(*filters)).all()
+        result = self.db_session.query(User).filter(and_(*filters)).all() if len(filters) > 1\
+            else self.db_session.query(User).filter(filters[0]).all()
         return user_schema.dump(result)
 
 
@@ -84,11 +85,11 @@ class UserRepositoryPostgres(UserRepository):
         if 'client_id' in data:
             user.client_id = data['client_id']
         if 'document_type' in data:
-            user.document_type = DocumentType[data['document_type']]
+            user.document_type = DocumentType(data['document_type'])
         if 'user_rol' in data:
-            user.user_role = UserRol[data['user_rol']]
+            user.user_role = UserRole(data['user_rol'])
         if 'communication_type' in data:
-            user.communication_type = CommunicationType[data['communication_type']]
+            user.communication_type = CommunicationType(data['communication_type'])
 
         self.db_session.commit()
         LOGGER.info(f"User {user_sub} updated successfully")

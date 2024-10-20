@@ -13,11 +13,18 @@ def init_db(migrate=False):
     global db_session
     global engine
 
-    if 'DATABASE_URL' in os.environ:
+    environment = os.getenv('ENVIRONMENT', 'local')
+
+    if environment == 'production':
+        db_url = os.getenv('DATABASE_URL', '')
+    else:
+        db_url = "postgresql://myuser:mypassword@localhost:5432/mydb"
+
+    if db_url:
         if engine is None or db_session is None:
-            LOGGER.info(f"Connecting to database at {os.getenv('DATABASE_URL')}")
+            LOGGER.info(f"Connecting to database at {db_url}")
             try:
-                engine = create_engine(os.getenv('DATABASE_URL'))
+                engine = create_engine(db_url)
                 Session = sessionmaker(bind=engine)
                 db_session = Session()
                 LOGGER.info("Database connection established.")

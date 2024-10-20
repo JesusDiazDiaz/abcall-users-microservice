@@ -26,7 +26,7 @@ USER_POOL_ID = 'us-east-1_YDIpg1HiU'
 CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
 
 
-@app.route('/users/{cliente_id}', methods=['GET'])
+@app.route('/users/{client_id}', methods=['GET'])
 def index(client_id):
     if client_id is None:
         client_id = ""
@@ -35,10 +35,8 @@ def index(client_id):
     return query_result.result
 
 
-@app.route('/me', methods=['GET'], authorizer=authorizer)
-def user_get():
-    user_sub = app.current_request.context['authorizer']['claims']['sub']
-
+@app.route('/user/{user_sub}', methods=['GET'], authorizer=authorizer)
+def user_get(user_sub):
     try:
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
         if not query_result.result:
@@ -49,8 +47,6 @@ def user_get():
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
         return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 500
-
-#TODO: Add /user/{user_sub} GET
 
 
 @app.route('/user/{user_sub}', methods=['DELETE'], authorizer=authorizer)
@@ -68,7 +64,7 @@ def user_delete(user_sub):
         LOGGER.error(f"Error fetching user: {str(e)}")
         return {'status': 'fail', 'message': 'An error occurred while deleting the user'}, 400
 
-      
+
 @app.route('/user/{user_sub}', methods=['PUT'], authorizer=authorizer)
 def user_update(user_sub):
     if not user_sub:
@@ -85,26 +81,27 @@ def user_update(user_sub):
         return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 400
 
 
-@app.route('/users', methods=['POST'], authorizer=authorizer)
+@app.route('/user', methods=['POST'], authorizer=authorizer)
 def user_post():
+    LOGGER.info("Receive create user request")
     user_as_json = app.current_request.json_body
 
-    LOGGER.info("Receive create user request")
-    required_fields = ["client_id", "document_type", "user_role", "id_number", "name", "last_name", "email", "cellphone",
+    required_fields = ["client_id", "document_type", "user_role", "id_number", "name", "last_name", "email",
+                       "cellphone",
                        "password", "communication_type"]
     for field in required_fields:
         if field not in user_as_json:
             raise BadRequestError(f"Missing required field: {field}")
 
-    valid_types = ["cedula", "passport", "cedula_extranjeria"]
+    valid_types = ["Cedula", "Passport", "Cedula_Extranjeria"]
     if user_as_json["document_type"] not in valid_types:
         raise BadRequestError(f"Invalid 'type' value. Must be one of {valid_types}")
 
-    valid_types = ['superadmin', 'admin', 'agent', 'regular']
+    valid_types = ['Superadmin', 'Admin', 'Agent', 'Regular']
     if user_as_json["user_role"] not in valid_types:
         raise BadRequestError(f"Invalid 'type' value. Must be one of {valid_types}")
 
-    valid_types = ['email', 'phone', 'sms', 'chat']
+    valid_types = ['Email', 'Telefono', 'Sms', 'Chat']
     if user_as_json["communication_type"] not in valid_types:
         raise BadRequestError(f"Invalid 'communication type' value. Must be one of {valid_types}")
 
@@ -127,7 +124,7 @@ def user_post():
                     'Value': 'true'
                 },
                 {
-                    'Name': 'custom:userRole',
+                    'Name': 'custom:custom:userRole',
                     'Value': user_as_json["user_role"]
                 }
             ],
@@ -164,31 +161,23 @@ def user_post():
 
     return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}, 200
 
+
 @app.route('/user/me', methods=['GET'], authorizer=authorizer)
 def get_current_user():
-    request = app.current_request
-    auth_header = request.headers.get('Authorization')
-
-
-    if not auth_header:
-        raise BadRequestError("Missing Authorization header")
-
-    token = auth_header.split()[1]
-
+    LOGGER.info("Find Me User")
+    user_info = app.current_request.context['authorizer']['claims']
+    user_sub = user_info['sub']
+    LOGGER.info(f"User Info: {user_info}")
     try:
-        user_info = cognito_client.get_user(AccessToken=token)
-
-        user_sub = user_info['Username']
-
         cognito_data = {
-            'username': user_info['Username'],
-            'email': next(attr['Value'] for attr in user_info['UserAttributes'] if attr['Name'] == 'email'),
-            'user_rol': next(attr['Value'] for attr in user_info['UserAttributes'] if attr['Name'] == 'custom:userRol'),
+            'username': user_info['email'],
+            'email': user_info['email'],
+            'user_rol': user_info['custom:custom:userRole'],
         }
 
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
 
-        if not query_result.result:  # Verificamos si se encontró un resultado en la base de datos
+        if not query_result.result:
             return {'status': 'fail', 'message': 'User not found in database'}, 404
 
         user_data = {
@@ -204,7 +193,6 @@ def get_current_user():
     except Exception as e:
         LOGGER.error(f"Error fetching current user: {str(e)}")
         return {'status': 'fail', 'message': 'An error occurred while fetching the current user'}, 500
-
 
 
 @app.route('/migrate', methods=['POST'])
