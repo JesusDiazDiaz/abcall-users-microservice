@@ -186,7 +186,7 @@ def get_current_user():
         if not query_result.result:
             raise NotFoundError('User not found')
 
-        query_result.pop('user_role', None)
+        query_result.result.pop('user_role', None)
 
         user_data = {
             **cognito_data,
