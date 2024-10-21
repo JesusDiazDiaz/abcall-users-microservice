@@ -22,7 +22,14 @@ authorizer = CognitoUserPoolAuthorizer(
     provider_arns=['arn:aws:cognito-idp:us-east-1:044162189377:userpool/us-east-1_YDIpg1HiU']
 )
 
-cognito_client = boto3.client('cognito-idp', region_name='us-east-1')
+_COGNITO_CLIENT = None
+
+
+def get_cognito_client():
+    global _COGNITO_CLIENT
+    if _COGNITO_CLIENT is None:
+        _COGNITO_CLIENT = boto3.client('cognito-idp', region_name='us-east-1')
+    return _COGNITO_CLIENT
 
 USER_POOL_ID = 'us-east-1_YDIpg1HiU'
 CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
@@ -87,6 +94,7 @@ def user_update(user_sub):
 def user_post():
     LOGGER.info("Receive create user request")
     user_as_json = app.current_request.json_body
+    cognito_client = get_cognito_client()
 
     required_fields = ["client_id", "document_type", "user_role", "id_number", "name", "last_name", "email",
                        "cellphone",

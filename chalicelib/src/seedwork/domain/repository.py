@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
-from .entity import Entity
-
 
 class Repository(ABC):
     def __init__(self):
@@ -36,9 +34,9 @@ class Mapper(ABC):
         pass
 
     @abstractmethod
-    def entity_to_dto(self, entity: Entity):
+    def entity_to_dto(self, entity):
         pass
 
     @abstractmethod
-    def dto_to_entity(self, dto: any) -> Entity:
+    def dto_to_entity(self, dto: any):
         pass
