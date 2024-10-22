@@ -208,6 +208,24 @@ def get_current_user():
         raise ChaliceViewError('An error occurred while fetching the current user')
 
 
+@app.route('/user/me', methods=['PUT'], authorizer=authorizer)
+def update_me():
+    LOGGER.info("Update Me User")
+    user_info = app.current_request.context['authorizer']['claims']
+    user_sub = user_info['sub']
+    LOGGER.info(f"User Info: {user_info}")
+
+    command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=app.current_request.json_body)
+
+    try:
+        execute_command(command)
+        return {'status': 'success'}
+
+    except Exception as e:
+        LOGGER.error(f"Error fetching user: {str(e)}")
+        raise ChaliceViewError('An error occurred while fetching the user')
+
+
 @app.route('/migrate', methods=['POST'])
 def migrate():
     try:

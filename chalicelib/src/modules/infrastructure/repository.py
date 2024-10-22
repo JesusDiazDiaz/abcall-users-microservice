@@ -77,16 +77,12 @@ class UserRepositoryPostgres(UserRepository):
             user.name = data['name']
         if 'last_name' in data:
             user.last_name = data['last_name']
-        if 'email' in data:
-            user.email = data['email']
         if 'cellphone' in data:
             user.cellphone = data['cellphone']
         if 'client_id' in data:
             user.client_id = data['client_id']
         if 'document_type' in data:
             user.document_type = DocumentType(data['document_type'])
-        if 'user_rol' in data:
-            user.user_role = UserRole(data['user_rol'])
         if 'communication_type' in data:
             user.communication_type = CommunicationType(data['communication_type'])
 
