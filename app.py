@@ -215,7 +215,19 @@ def update_me():
     user_sub = user_info['sub']
     LOGGER.info(f"User Info: {user_info}")
 
-    command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=app.current_request.json_body)
+    user_as_json = app.current_request.json_body
+
+    if 'document_type' in user_as_json:
+        valid_types = ['Cedula', 'Cedula_Extranjeria', "Passport"]
+        if user_as_json["document_type"] not in valid_types:
+            raise BadRequestError(f"Invalid 'document_type' value. Must be one of {valid_types}")
+
+    if 'communication_type' in user_as_json:
+        valid_types = ['Email', 'Telefono', 'Sms', 'Chat']
+        if user_as_json["communication_type"] not in valid_types:
+            raise BadRequestError(f"Invalid 'communication_type' value. Must be one of {valid_types}")
+
+    command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=user_as_json)
 
     try:
         execute_command(command)
