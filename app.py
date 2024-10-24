@@ -35,7 +35,7 @@ USER_POOL_ID = 'us-east-1_YDIpg1HiU'
 CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
 
 
-@app.route('/users/{client_id}', methods=['GET'])
+@app.route('/users/{client_id}', cors=True, methods=['GET'])
 def index(client_id):
     if client_id is None:
         client_id = ""
@@ -44,7 +44,7 @@ def index(client_id):
     return query_result.result
 
 
-@app.route('/user/{user_sub}', methods=['GET'])
+@app.route('/user/{user_sub}', cors=True, methods=['GET'])
 def user_get(user_sub):
     try:
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
@@ -58,7 +58,7 @@ def user_get(user_sub):
         return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 500
 
 
-@app.route('/user/{user_sub}', methods=['DELETE'], authorizer=authorizer)
+@app.route('/user/{user_sub}', cors=True, methods=['DELETE'], authorizer=authorizer)
 def user_delete(user_sub):
     if not user_sub:
         return {'status': 'fail', 'message': 'Invalid user subscription'}, 400
@@ -74,7 +74,7 @@ def user_delete(user_sub):
         return {'status': 'fail', 'message': 'An error occurred while deleting the user'}, 400
 
 
-@app.route('/user/{user_sub}', methods=['PUT'], authorizer=authorizer)
+@app.route('/user/{user_sub}', cors=True, methods=['PUT'], authorizer=authorizer)
 def user_update(user_sub):
     if not user_sub:
         return {'status': 'fail', 'message': 'Invalid user subscription'}, 400
@@ -90,7 +90,7 @@ def user_update(user_sub):
         return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 400
 
 
-@app.route('/user', methods=['POST'], authorizer=authorizer)
+@app.route('/user', cors=True, methods=['POST'], authorizer=authorizer)
 def user_post():
     LOGGER.info("Receive create user request")
     user_as_json = app.current_request.json_body
@@ -174,7 +174,7 @@ def user_post():
     return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}, 200
 
 
-@app.route('/user/me', methods=['GET'], authorizer=authorizer)
+@app.route('/user/me', cors=True, methods=['GET'], authorizer=authorizer)
 def get_current_user():
     LOGGER.info("Find Me User")
     user_info = app.current_request.context['authorizer']['claims']
@@ -208,7 +208,7 @@ def get_current_user():
         raise ChaliceViewError('An error occurred while fetching the current user')
 
 
-@app.route('/user/me', methods=['PUT'], authorizer=authorizer)
+@app.route('/user/me', cors=True, methods=['PUT'], authorizer=authorizer)
 def update_me():
     LOGGER.info("Update Me User")
     user_info = app.current_request.context['authorizer']['claims']
