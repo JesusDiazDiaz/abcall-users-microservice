@@ -238,6 +238,84 @@ def update_me():
         raise ChaliceViewError('An error occurred while fetching the user')
 
 
+@app.route('/user/register', cors=True, methods=['POST'])
+def register():
+    LOGGER.info("Receive create user request")
+    user_as_json = app.current_request.json_body
+    cognito_client = get_cognito_client()
+
+    required_fields = ["client_id", "document_type", "id_number", "name", "last_name", "email",
+                       "cellphone",
+                       "password", "communication_type"]
+    for field in required_fields:
+        if field not in user_as_json:
+            raise BadRequestError(f"Missing required field: {field}")
+
+    valid_types = ["Cedula", "Passport", "Cedula_Extranjeria"]
+    if user_as_json["document_type"] not in valid_types:
+        raise BadRequestError(f"Invalid 'type' value. Must be one of {valid_types}")
+
+    valid_types = ['Email', 'Telefono', 'Sms', 'Chat']
+    if user_as_json["communication_type"] not in valid_types:
+        raise BadRequestError(f"Invalid 'communication type' value. Must be one of {valid_types}")
+
+    email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if not re.match(email_regex, user_as_json["email"]):
+        raise BadRequestError("Invalid email format")
+
+    try:
+        # TODO: Creo que esto se puedo mover al comando si lo deseamos, para evitar codigo aqui
+        response = cognito_client.admin_create_user(
+            UserPoolId=USER_POOL_ID,
+            Username=user_as_json["email"],
+            UserAttributes=[
+                {
+                    'Name': 'email',
+                    'Value': user_as_json["email"]
+                },
+                {
+                    'Name': 'email_verified',
+                    'Value': 'true'
+                },
+                {
+                    'Name': 'custom:custom:userRole',
+                    'Value': 'Regular'
+                }
+            ],
+            TemporaryPassword=user_as_json["password"],
+            MessageAction='SUPPRESS'
+        )
+
+        cognito_client.admin_set_user_password(
+            UserPoolId=USER_POOL_ID,
+            Username=user_as_json["email"],
+            Password=user_as_json["password"],
+            Permanent=True
+        )
+    except cognito_client.exceptions.UsernameExistsException:
+        raise BadRequestError("The email is already registered.")
+    except Exception as e:
+        LOGGER.error(f"Error creating user in Cognito: {str(e)}")
+        raise BadRequestError("Failed to create user in Cognito.")
+
+    cognito_user_sub = next(attr['Value'] for attr in response['User']['Attributes'] if attr['Name'] == 'sub')
+
+    command = CreateUserCommand(
+        cognito_user_sub=cognito_user_sub,
+        document_type=user_as_json["document_type"],
+        client_id=user_as_json["client_id"],
+        id_number=user_as_json["id_number"],
+        name=user_as_json["name"],
+        last_name=user_as_json["last_name"],
+        communication_type=user_as_json["communication_type"],
+        user_role='Regular',
+        cellphone=user_as_json["cellphone"] if "cellphone" in user_as_json else None
+    )
+
+    execute_command(command)
+
+    return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}, 200
+
 @app.route('/migrate', methods=['POST'])
 def migrate():
     try:
