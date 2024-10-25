@@ -35,6 +35,10 @@ class UpdateInformationHandler(CommandBaseHandler):
                 {
                     'Name': 'custom:custom:userRole',
                     'Value': command.user_as_json["user_role"]
+                },
+                {
+                    'Name': 'custom:client_id',
+                    'Value': str(command.user_as_json['client_id'])
                 }
             ],
             TemporaryPassword=command.user_as_json["password"],
