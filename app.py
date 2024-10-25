@@ -4,6 +4,7 @@ import re
 from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, NotFoundError, ChaliceViewError
 
 from chalicelib.src.config.db import init_db
+from chalicelib.src.modules.application.commands.create_cognito_user import CreateCognitoUserCommand
 from chalicelib.src.modules.application.commands.create_user import CreateUserCommand
 from chalicelib.src.modules.application.commands.delete_user import DeleteUserCommand
 from chalicelib.src.modules.application.commands.update_user import UpdateUserCommand
@@ -31,11 +32,12 @@ def get_cognito_client():
         _COGNITO_CLIENT = boto3.client('cognito-idp', region_name='us-east-1')
     return _COGNITO_CLIENT
 
+
 USER_POOL_ID = 'us-east-1_YDIpg1HiU'
 CLIENT_ID = '65sbvtotc1hssqecgusj1p3f9g'
 
 
-@app.route('/users/{client_id}', cors=True, methods=['GET'])
+@app.route('/users/{client_id}', cors=True, methods=['GET'], authorizer=authorizer)
 def index(client_id):
     if client_id is None:
         client_id = ""
@@ -44,7 +46,7 @@ def index(client_id):
     return query_result.result
 
 
-@app.route('/user/{user_sub}', cors=True, methods=['GET'])
+@app.route('/user/{user_sub}', cors=True, methods=['GET'], authorizer=authorizer)
 def user_get(user_sub):
     try:
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
@@ -55,39 +57,39 @@ def user_get(user_sub):
 
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 500
+        raise ChaliceViewError('An error occurred while fetching the user')
 
 
 @app.route('/user/{user_sub}', cors=True, methods=['DELETE'], authorizer=authorizer)
 def user_delete(user_sub):
     if not user_sub:
-        return {'status': 'fail', 'message': 'Invalid user subscription'}, 400
+        return BadRequestError('Invalid user subscription')
 
     command = DeleteUserCommand(cognito_user_sub=user_sub)
 
     try:
         execute_command(command)
-        return {'status': 'success'}, 200
+        return {'status': 'success'}
 
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while deleting the user'}, 400
+        raise ChaliceViewError('An error occurred while deleting the user')
 
 
 @app.route('/user/{user_sub}', cors=True, methods=['PUT'], authorizer=authorizer)
 def user_update(user_sub):
     if not user_sub:
-        return {'status': 'fail', 'message': 'Invalid user subscription'}, 400
+        raise ChaliceViewError('Invalid user subscription')
 
     command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=app.current_request.json_body)
 
     try:
         execute_command(command)
-        return {'status': 'success'}, 200
+        return {'status': 'success'}
 
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
-        return {'status': 'fail', 'message': 'An error occurred while fetching the user'}, 400
+        raise ChaliceViewError('An error occurred while fetching the user')
 
 
 @app.route('/user', cors=True, methods=['POST'], authorizer=authorizer)
@@ -120,34 +122,12 @@ def user_post():
         raise BadRequestError("Invalid email format")
 
     try:
-        # TODO: Creo que esto se puedo mover al comando si lo deseamos, para evitar codigo aqui
-        response = cognito_client.admin_create_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_as_json["email"],
-            UserAttributes=[
-                {
-                    'Name': 'email',
-                    'Value': user_as_json["email"]
-                },
-                {
-                    'Name': 'email_verified',
-                    'Value': 'true'
-                },
-                {
-                    'Name': 'custom:custom:userRole',
-                    'Value': user_as_json["user_role"]
-                }
-            ],
-            TemporaryPassword=user_as_json["password"],
-            MessageAction='SUPPRESS'
+        cognito_command = CreateCognitoUserCommand(
+            cognito_client=cognito_client,
+            user_as_json=user_as_json,
+            user_pool_id=USER_POOL_ID
         )
-
-        cognito_client.admin_set_user_password(
-            UserPoolId=USER_POOL_ID,
-            Username=user_as_json["email"],
-            Password=user_as_json["password"],
-            Permanent=True
-        )
+        response = execute_command(cognito_command)
     except cognito_client.exceptions.UsernameExistsException:
         raise BadRequestError("The email is already registered.")
     except Exception as e:
@@ -171,7 +151,7 @@ def user_post():
 
     execute_command(command)
 
-    return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}, 200
+    return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}
 
 
 @app.route('/user/me', cors=True, methods=['GET'], authorizer=authorizer)
@@ -263,35 +243,15 @@ def register():
     if not re.match(email_regex, user_as_json["email"]):
         raise BadRequestError("Invalid email format")
 
-    try:
-        # TODO: Creo que esto se puedo mover al comando si lo deseamos, para evitar codigo aqui
-        response = cognito_client.admin_create_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_as_json["email"],
-            UserAttributes=[
-                {
-                    'Name': 'email',
-                    'Value': user_as_json["email"]
-                },
-                {
-                    'Name': 'email_verified',
-                    'Value': 'true'
-                },
-                {
-                    'Name': 'custom:custom:userRole',
-                    'Value': 'Regular'
-                }
-            ],
-            TemporaryPassword=user_as_json["password"],
-            MessageAction='SUPPRESS'
-        )
+    user_as_json['user_role'] = 'Regular'
 
-        cognito_client.admin_set_user_password(
-            UserPoolId=USER_POOL_ID,
-            Username=user_as_json["email"],
-            Password=user_as_json["password"],
-            Permanent=True
+    try:
+        congito_command = CreateCognitoUserCommand(
+            cognito_client=cognito_client,
+            user_as_json=user_as_json,
+            user_pool_id=USER_POOL_ID
         )
+        response = execute_command(congito_command)
     except cognito_client.exceptions.UsernameExistsException:
         raise BadRequestError("The email is already registered.")
     except Exception as e:
@@ -314,7 +274,8 @@ def register():
 
     execute_command(command)
 
-    return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}, 200
+    return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}
+
 
 @app.route('/migrate', methods=['POST'])
 def migrate():
