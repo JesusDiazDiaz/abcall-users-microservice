@@ -52,9 +52,13 @@ def user_get(user_sub):
         query_result = execute_query(GetUserQuery(user_sub=user_sub))
         if not query_result.result:
             return {'status': 'fail', 'message': 'User not found'}
-
-        return query_result.result
-
+        cognito_client = get_cognito_client()
+        response = cognito_client.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=user_sub)
+        result = query_result.result
+        result['email'] = next(attr['Value'] for attr in response['UserAttributes'] if attr['Name'] == 'email')
+        return result
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
         raise ChaliceViewError('An error occurred while fetching the user')
@@ -70,7 +74,6 @@ def user_delete(user_sub):
     try:
         execute_command(command)
         return {'status': 'success'}
-
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
         raise ChaliceViewError('An error occurred while deleting the user')
