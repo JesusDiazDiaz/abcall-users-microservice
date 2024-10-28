@@ -1,4 +1,6 @@
 import enum
+
+from marshmallow_enum import EnumField
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Enum, Date, Text
@@ -44,6 +46,9 @@ class User(Base):
 
 
 class UserSchema(SQLAlchemyAutoSchema):
+    document_type = EnumField(DocumentType, by_value=True)
+    user_role = EnumField(UserRole, by_value=True)
+    communication_type = EnumField(CommunicationType, by_value=True)
     class Meta:
         model = User
         load_instance = True
