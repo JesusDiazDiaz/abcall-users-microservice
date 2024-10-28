@@ -40,7 +40,7 @@ class UserRepositoryPostgres(UserRepository):
 
     def remove(self, user_sub):
         LOGGER.info(f"Repository remove user: {user_sub}")
-        entity = self.db_session.query(User).filter_by(user_sub=user_sub).first()
+        entity = self.db_session.query(User).filter_by(cognito_user_sub=user_sub).first()
         self.db_session.delete(entity)
         self.db_session.commit()
         LOGGER.info(f"User {user_sub} removed successfully")

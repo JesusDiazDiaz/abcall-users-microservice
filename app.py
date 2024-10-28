@@ -73,9 +73,21 @@ def user_delete(user_sub):
 
     try:
         execute_command(command)
-        return {'status': 'success'}
     except Exception as e:
         LOGGER.error(f"Error fetching user: {str(e)}")
+        raise ChaliceViewError('An error occurred while deleting the user')
+
+    cognito_client = get_cognito_client()
+    try:
+        cognito_client.admin_delete_user(
+            UserPoolId=USER_POOL_ID,
+            Username=user_sub
+        )
+        return {"message": f"Usuario {user_sub} eliminado exitosamente"}
+    except cognito_client.exceptions.UserNotFoundException:
+        return ChaliceViewError('User not found')
+    except Exception as e:
+        LOGGER.error(f"Error deleting user: {str(e)}")
         raise ChaliceViewError('An error occurred while deleting the user')
 
 
