@@ -6,8 +6,11 @@ from chalice import Chalice, BadRequestError, CognitoUserPoolAuthorizer, NotFoun
 from chalicelib.src.config.db import init_db
 from chalicelib.src.modules.application.commands.create_cognito_user import CreateCognitoUserCommand
 from chalicelib.src.modules.application.commands.create_user import CreateUserCommand
+from chalicelib.src.modules.application.commands.delete_cognito_user import DeleteCognitoUserCommand
 from chalicelib.src.modules.application.commands.delete_user import DeleteUserCommand
+from chalicelib.src.modules.application.commands.update_cognito_user import UpdateCognitoUserCommand
 from chalicelib.src.modules.application.commands.update_user import UpdateUserCommand
+from chalicelib.src.modules.application.queries.get_cognito_user import GetCognitoUserQuery
 from chalicelib.src.modules.application.queries.get_user import GetUserQuery
 from chalicelib.src.modules.application.queries.get_users import GetUsersQuery
 from chalicelib.src.seedwork.application.commands import execute_command
@@ -42,26 +45,29 @@ def index(client_id):
     if client_id is None:
         client_id = ""
 
-    query_result = execute_query(GetUsersQuery(client_id=client_id))
-    return query_result.result
-
+    try:
+        query_result = execute_query(GetUsersQuery(client_id=client_id))
+        return query_result.result
+    except Exception as e:
+        LOGGER.error(f"Error loading users: {str(e)}")
+        raise ChaliceViewError('An error occurred while loading users')
 
 @app.route('/user/{user_sub}', cors=True, methods=['GET'], authorizer=authorizer)
 def user_get(user_sub):
     try:
-        query_result = execute_query(GetUserQuery(user_sub=user_sub))
-        if not query_result.result:
+        db_query_result = execute_query(GetUserQuery(user_sub=user_sub))
+        cognito_query_result = execute_query(GetCognitoUserQuery(cognito_client=get_cognito_client(),
+                                                                 user_pool_id=USER_POOL_ID,
+                                                                 user_sub=user_sub))
+        if not db_query_result.result:
             return {'status': 'fail', 'message': 'User not found'}
-        cognito_client = get_cognito_client()
-        response = cognito_client.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_sub)
-        result = query_result.result
-        result['email'] = next(attr['Value'] for attr in response['UserAttributes'] if attr['Name'] == 'email')
+        result = db_query_result.result
+        cognito_result = cognito_query_result.result
+        result['email'] = next(attr['Value'] for attr in cognito_result['UserAttributes'] if attr['Name'] == 'email')
         return result
     except Exception as e:
-        LOGGER.error(f"Error fetching user: {str(e)}")
-        raise ChaliceViewError('An error occurred while fetching the user')
+        LOGGER.error(f"Error getting the user {user_sub}: {str(e)}")
+        raise ChaliceViewError('An error occurred while getting the user')
 
 
 @app.route('/user/{user_sub}', cors=True, methods=['DELETE'], authorizer=authorizer)
@@ -74,37 +80,43 @@ def user_delete(user_sub):
     try:
         execute_command(command)
     except Exception as e:
-        LOGGER.error(f"Error fetching user: {str(e)}")
+        LOGGER.error(f"Error Deleting user {user_sub}: {str(e)}")
         raise ChaliceViewError('An error occurred while deleting the user')
 
-    cognito_client = get_cognito_client()
+    command = DeleteCognitoUserCommand(cognito_client=get_cognito_client(),
+                                       user_sub=user_sub,
+                                       user_pool_id=USER_POOL_ID)
     try:
-        cognito_client.admin_delete_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user_sub
-        )
+        execute_command(command)
         return {"message": f"Usuario {user_sub} eliminado exitosamente"}
-    except cognito_client.exceptions.UserNotFoundException:
-        return ChaliceViewError('User not found')
     except Exception as e:
-        LOGGER.error(f"Error deleting user: {str(e)}")
+        LOGGER.error(f"Error deleting cognito user {user_sub}: {str(e)}")
         raise ChaliceViewError('An error occurred while deleting the user')
 
 
 @app.route('/user/{user_sub}', cors=True, methods=['PUT'], authorizer=authorizer)
 def user_update(user_sub):
     if not user_sub:
-        raise ChaliceViewError('Invalid user subscription')
+        raise BadRequestError('Invalid user subscription')
 
-    command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=app.current_request.json_body)
+    user_as_json = app.current_request.json_body
+    command = UpdateUserCommand(cognito_user_sub=user_sub, user_data=user_as_json)
 
+    attributes = {}
+    if 'client_id' in user_as_json:
+        attributes['custom:client_id'] = str(user_as_json['client_id'])
+    if 'user_role' in user_as_json:
+        attributes['custom:custom:userRole'] = user_as_json['user_role']
     try:
         execute_command(command)
+        if attributes:
+            cognito_command = UpdateCognitoUserCommand(cognito_client=get_cognito_client(), user_sub=user_sub,
+                                                       user_pool_id=USER_POOL_ID, attributes=attributes)
+            execute_command(cognito_command)
         return {'status': 'success'}
-
     except Exception as e:
-        LOGGER.error(f"Error fetching user: {str(e)}")
-        raise ChaliceViewError('An error occurred while fetching the user')
+        LOGGER.error(f"Error updating user {user_sub}: {str(e)}")
+        raise ChaliceViewError('An error occurred while updating the user')
 
 
 @app.route('/user', cors=True, methods=['POST'], authorizer=authorizer)
@@ -147,7 +159,7 @@ def user_post():
         raise BadRequestError("The email is already registered.")
     except Exception as e:
         LOGGER.error(f"Error creating user in Cognito: {str(e)}")
-        raise BadRequestError("Failed to create user in Cognito.")
+        raise ChaliceViewError("Failed to create user")
 
     cognito_user_sub = next(attr['Value'] for attr in response['User']['Attributes'] if attr['Name'] == 'sub')
 
@@ -164,7 +176,11 @@ def user_post():
 
     )
 
-    execute_command(command)
+    try:
+        execute_command(command)
+    except Exception as e:
+        LOGGER.error(f"Error creating user in db: {str(e)}")
+        raise BadRequestError("Failed to create user")
 
     return {'status': "ok", 'message': "User created successfully", 'cognito_user_sub': cognito_user_sub}
 

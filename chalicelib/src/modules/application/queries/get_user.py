@@ -11,7 +11,7 @@ class GetUserQuery(Query):
 
 class GetUserHandler(QueryBaseHandler):
     def handle(self, query: GetUserQuery):
-        repository = self.user_factory.create_object(UserRepository.__class__)
+        repository = self.user_factory.create_object(UserRepository)
         result = repository.get(query.user_sub)
         return QueryResult(result=result)
 

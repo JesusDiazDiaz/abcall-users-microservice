@@ -10,7 +10,7 @@ class GetUsersQuery(Query):
 
 class GetUsersHandler(QueryBaseHandler):
     def handle(self, query: GetUsersQuery):
-        repository = self.user_factory.create_object(UserRepository.__class__)
+        repository = self.user_factory.create_object(UserRepository)
         result = repository.get_all({'client_id': query.client_id})
         return QueryResult(result=result)
 

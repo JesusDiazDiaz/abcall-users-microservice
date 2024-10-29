@@ -12,22 +12,22 @@ LOGGER = logging.getLogger('abcall-users-microservice')
 
 
 @dataclass
-class CreateCognitoUserCommand(Command):
+class DeleteCognitoUserCommand(Command):
     cognito_client: BaseClient
-    user_as_json: dict
+    user_sub: str
     user_pool_id: str
 
 
 class UpdateInformationHandler(CommandBaseHandler):
-    def handle(self, command: CreateCognitoUserCommand):
+    def handle(self, command: DeleteCognitoUserCommand):
         LOGGER.info("Handle createCognitoUserCommand")
         repository = self.user_factory.create_object(UserCognitoRepository,
                                                      cognito_client=command.cognito_client,
                                                      user_pool_id=command.user_pool_id)
-        return repository.add(command.user_as_json)
+        return repository.remove(command.user_sub)
 
 
-@execute_command.register(CreateCognitoUserCommand)
-def execute_update_information_command(command: CreateCognitoUserCommand):
+@execute_command.register(DeleteCognitoUserCommand)
+def execute_update_information_command(command: DeleteCognitoUserCommand):
     handler = UpdateInformationHandler()
     return handler.handle(command)

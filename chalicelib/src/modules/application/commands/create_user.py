@@ -25,7 +25,7 @@ class UpdateInformationHandler(CommandBaseHandler):
     def handle(self, command: CreateUserCommand):
         LOGGER.info("Handle createUserCommand")
 
-        repository = self.user_factory.create_object(UserRepository.__class__)
+        repository = self.user_factory.create_object(UserRepository)
         repository.add(command)
 
 
