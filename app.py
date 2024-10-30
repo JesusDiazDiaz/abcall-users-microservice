@@ -52,7 +52,8 @@ def index(client_id):
         LOGGER.error(f"Error loading users: {str(e)}")
         raise ChaliceViewError('An error occurred while loading users')
 
-@app.route('/user/{user_sub}', cors=True, methods=['GET'], authorizer=authorizer)
+
+@app.route('/user/{user_sub}', cors=True, methods=['GET'])
 def user_get(user_sub):
     try:
         db_query_result = execute_query(GetUserQuery(user_sub=user_sub))
