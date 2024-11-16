@@ -198,3 +198,49 @@ def test_create_user_email_exists():
             mock_cognito_client.admin_create_user.assert_called_once()
 
             mock_cognito_client.admin_set_user_password.assert_not_called()
+
+
+def test_get_user_not_found():
+    with patch('chalicelib.src.modules.infrastructure.repository.UserRepositoryPostgres.get', return_value=None):
+        with Client(app) as client:
+            response = client.http.get('/user/non-existent-user-sub')
+
+            response_data = json.loads(response.body)
+            assert response_data['message'] == 'User not found'
+
+
+def test_delete_user_not_found():
+    with patch('chalicelib.src.modules.infrastructure.repository.UserRepositoryPostgres.remove', side_effect=ValueError("User not found")):
+        with Client(app) as client:
+            response = client.http.delete('/user/non-existent-user-sub')
+
+            from pprint import pprint
+            response_data = json.loads(response.body)
+
+            pprint(response_data)
+
+            assert response_data[0]['message'] == 'An error occurred while deleting the user'
+
+
+def test_create_user_missing_field():
+    request_body = {
+        "client_id": 2,
+        "user_role": "Admin",
+        "id_number": "123456",
+        "name": "John",
+        "last_name": "Doe",
+        "email": "john.doe@example.com",
+        "cellphone": "1234567890",
+        "communication_type": "Email"
+    }
+
+    with Client(app) as client:
+        response = client.http.post(
+            '/user',
+            headers={'Content-Type': 'application/json'},
+            body=json.dumps(request_body)
+        )
+
+        assert response.status_code == 400
+        response_data = json.loads(response.body)
+        assert "Missing required field: document_type" in response_data['Message']

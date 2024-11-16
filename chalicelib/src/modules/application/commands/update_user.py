@@ -18,7 +18,7 @@ class UpdateInformationHandler(CommandBaseHandler):
     def handle(self, command: UpdateUserCommand):
         LOGGER.info("Handle createUserCommand")
 
-        repository = self.user_factory.create_object(UserRepository.__class__)
+        repository = self.user_factory.create_object(UserRepository)
         repository.update(command.cognito_user_sub, command.user_data)
 
 
