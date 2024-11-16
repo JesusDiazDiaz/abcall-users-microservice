@@ -2,16 +2,21 @@ from dataclasses import dataclass
 from chalicelib.src.seedwork.application.queries import Query, QueryResult, execute_query
 from chalicelib.src.modules.application.queries.base import QueryBaseHandler
 from chalicelib.src.modules.domain.repository import UserRepository
+from typing import Optional
 
 
 @dataclass
 class GetUsersQuery(Query):
-    client_id:str
+    client_id: Optional[str] = None
+    filters: Optional[dict] = None
+
 
 class GetUsersHandler(QueryBaseHandler):
-    def handle(self, query: GetUsersQuery):
-        repository = self.user_factory.create_object(UserRepository)
-        result = repository.get_all({'client_id': query.client_id})
+    def handle(self, query: GetUsersQuer
+        if query.filters is not None:
+            result = repository.get_all(query.filters)
+        else:
+            result = repository.get_all({'client_id': query.client_id})
         return QueryResult(result=result)
 
 
