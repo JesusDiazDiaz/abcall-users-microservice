@@ -44,6 +44,12 @@ def index(client_id):
     return query_result.result
 
 
+@app.route('/users', methods=['GET'])
+def user_by_id_number():
+    query_result = execute_query(GetUsersQuery(filters=app.current_request.query_params))
+    return query_result.result
+
+
 @app.route('/user/{user_sub}', methods=['GET'])
 def user_get(user_sub):
     try:

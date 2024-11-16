@@ -15,7 +15,7 @@ class Repository(ABC):
         pass
 
     @abstractmethod
-    def get_all(self):
+    def get_all(self, query=None):
         pass
 
     @abstractmethod
