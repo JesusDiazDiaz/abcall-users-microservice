@@ -13,6 +13,7 @@ class GetUsersQuery(Query):
 
 class GetUsersHandler(QueryBaseHandler):
     def handle(self, query: GetUsersQuery):
+        repository = self.user_factory.create_object(UserRepository)
         if query.filters is not None:
             result = repository.get_all(query.filters)
         else:
