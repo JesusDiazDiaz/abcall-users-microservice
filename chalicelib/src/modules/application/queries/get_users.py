@@ -12,7 +12,7 @@ class GetUsersQuery(Query):
 
 
 class GetUsersHandler(QueryBaseHandler):
-    def handle(self, query: GetUsersQuer
+    def handle(self, query: GetUsersQuery):
         if query.filters is not None:
             result = repository.get_all(query.filters)
         else:
