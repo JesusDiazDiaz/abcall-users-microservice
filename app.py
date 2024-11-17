@@ -53,7 +53,7 @@ def index(client_id):
         raise ChaliceViewError('An error occurred while loading users')
 
 
-@app.route('/users', methods=['GET'])
+@app.route('/users', cors=True, methods=['GET'])
 def user_by_id_number():
     query_result = execute_query(GetUsersQuery(filters=app.current_request.query_params))
     return query_result.result
