@@ -56,6 +56,18 @@ def index(client_id):
 @app.route('/users', cors=True, methods=['GET'])
 def user_by_id_number():
     query_result = execute_query(GetUsersQuery(filters=app.current_request.query_params))
+
+    for result in query_result:
+        cognito_query_result = execute_query(
+            GetCognitoUserQuery(
+                cognito_client=get_cognito_client(),
+                user_pool_id=USER_POOL_ID,
+                user_sub=user_sub
+            )
+        )
+        cognito_result = cognito_query_result.result
+        result['email'] = next(attr['Value'] for attr in cognito_result['UserAttributes'] if attr['Name'] == 'email')
+
     return query_result.result
 
 
