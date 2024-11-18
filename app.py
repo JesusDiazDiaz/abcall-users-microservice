@@ -62,7 +62,7 @@ def user_by_id_number():
             GetCognitoUserQuery(
                 cognito_client=get_cognito_client(),
                 user_pool_id=USER_POOL_ID,
-                user_sub=user_sub
+                user_sub=result["cognito_user_sub"]
             )
         )
         cognito_result = cognito_query_result.result
