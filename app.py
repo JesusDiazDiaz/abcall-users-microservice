@@ -57,7 +57,7 @@ def index(client_id):
 def user_by_id_number():
     query_result = execute_query(GetUsersQuery(filters=app.current_request.query_params))
 
-    for result in query_result:
+    for result in query_result.result:
         cognito_query_result = execute_query(
             GetCognitoUserQuery(
                 cognito_client=get_cognito_client(),
